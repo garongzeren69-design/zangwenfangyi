@@ -77,6 +77,30 @@ OPENAI_API_KEY=your_api_key_here
 
 7. 保存后重新部署项目。
 
+## Netlify 部署
+
+Netlify 会自动识别 Next.js，并把 `/api/translate`、`/api/tts` 部署为服务端函数。项目已经包含 `netlify.toml`：
+
+```toml
+[build]
+command = "npm run build"
+publish = ".next"
+```
+
+部署后在 Netlify 后台添加环境变量：
+
+1. 打开站点 `Site configuration`。
+2. 进入 `Environment variables`。
+3. 添加变量名：
+
+```text
+OPENAI_API_KEY
+```
+
+4. 变量值只填写 OpenAI API Key 本身，例如 `sk-proj-...`。不要填写 `Bearer sk-proj-...`，不要填写 Netlify token、GitHub token 或 ChatGPT 登录 token。
+5. 变量 context 选择 `Production`，如果你在 Deploy Preview 测试，也要给 `Deploy Preview` 添加同一个变量。
+6. 保存后必须重新部署一次。
+
 ## API
 
 ### POST `/api/translate`

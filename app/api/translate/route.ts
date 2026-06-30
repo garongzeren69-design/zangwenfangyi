@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getOpenAIAPIKey } from "@/lib/openai";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ function isSupportedTargetLanguage(language: string) {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIAPIKey();
 
   if (!apiKey) {
     return NextResponse.json(
