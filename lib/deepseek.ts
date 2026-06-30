@@ -1,5 +1,5 @@
-export function getOpenAIAPIKey() {
-  const rawKey = process.env.OPENAI_API_KEY;
+export function getDeepSeekAPIKey() {
+  const rawKey = process.env.DEEPSEEK_API_KEY;
 
   if (!rawKey) {
     return "";

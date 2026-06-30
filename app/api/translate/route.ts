@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOpenAIAPIKey } from "@/lib/openai";
+import { getDeepSeekAPIKey } from "@/lib/deepseek";
 
 export const runtime = "nodejs";
 
@@ -22,11 +22,11 @@ function isSupportedTargetLanguage(language: string) {
 }
 
 export async function POST(request: Request) {
-  const apiKey = getOpenAIAPIKey();
+  const apiKey = getDeepSeekAPIKey();
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "服务器未配置 OPENAI_API_KEY。" },
+      { error: "服务器未配置 DEEPSEEK_API_KEY。" },
       { status: 500 }
     );
   }
@@ -52,45 +52,45 @@ export async function POST(request: Request) {
   }
 
   try {
-    const openAIResponse = await fetch("https://api.openai.com/v1/responses", {
+    const deepSeekResponse = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        instructions: SYSTEM_PROMPT,
-        input: `目标语言：${targetLanguage}\n\n用户输入：\n${text}`,
+        model: "deepseek-v4-flash",
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM_PROMPT
+          },
+          {
+            role: "user",
+            content: `目标语言：${targetLanguage}\n\n用户输入：\n${text}`
+          }
+        ],
         temperature: 0.2
       })
     });
 
-    const data = (await openAIResponse.json()) as {
-      output_text?: string;
+    const data = (await deepSeekResponse.json()) as {
       error?: { message?: string };
-      output?: Array<{
-        content?: Array<{
-          type?: string;
-          text?: string;
-        }>;
+      choices?: Array<{
+        message?: {
+          content?: string;
+        };
       }>;
     };
 
-    if (!openAIResponse.ok) {
+    if (!deepSeekResponse.ok) {
       return NextResponse.json(
-        { error: data.error?.message || "OpenAI 翻译请求失败。" },
-        { status: openAIResponse.status }
+        { error: data.error?.message || "DeepSeek 翻译请求失败。" },
+        { status: deepSeekResponse.status }
       );
     }
 
-    const translation =
-      data.output_text ||
-      data.output
-        ?.flatMap((item) => item.content || [])
-        .map((content) => content.text || "")
-        .join("")
-        .trim();
+    const translation = data.choices?.[0]?.message?.content?.trim();
 
     if (!translation) {
       return NextResponse.json({ error: "未收到有效译文。" }, { status: 502 });
@@ -98,6 +98,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ translation });
   } catch {
-    return NextResponse.json({ error: "服务器请求 OpenAI 失败。" }, { status: 502 });
+    return NextResponse.json({ error: "服务器请求 DeepSeek 失败。" }, { status: 502 });
   }
 }

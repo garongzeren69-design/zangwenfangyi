@@ -38,6 +38,18 @@ function detectInputLanguage(text: string) {
   return "自动识别";
 }
 
+function getSpeechLanguage(language: Language) {
+  if (language === "chinese") {
+    return "zh-CN";
+  }
+
+  if (language === "english") {
+    return "en-US";
+  }
+
+  return "bo-CN";
+}
+
 export default function Home() {
   const [text, setText] = useState("");
   const [result, setResult] = useState("");
@@ -46,7 +58,7 @@ export default function Home() {
   const [loadingTarget, setLoadingTarget] = useState<Language | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const [lastTarget, setLastTarget] = useState<Language>("chinese");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const inputLanguage = useMemo(() => detectInputLanguage(text), [text]);
 
@@ -105,57 +117,32 @@ export default function Home() {
     window.setTimeout(() => setCopied(false), 1600);
   }
 
-  async function speakResult() {
+  function speakResult() {
     if (!result.trim()) {
       setError("请先完成翻译，再播放朗读。");
       return;
     }
 
+    if (!("speechSynthesis" in window)) {
+      setError("当前浏览器不支持朗读功能。");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
     setSpeaking(true);
     setError("");
 
-    try {
-      const response = await fetch("/api/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          text: result.trim(),
-          language: languageNames[lastTarget]
-        })
-      });
-
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error || "朗读生成失败，请稍后再试。");
-      }
-
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
-
-      if (audioRef.current) {
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
-      }
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onended = () => {
-        setSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      audio.onerror = () => {
-        setSpeaking(false);
-        setError("音频播放失败，请重试。");
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      await audio.play();
-    } catch (speechError) {
+    const utterance = new SpeechSynthesisUtterance(result.trim());
+    utterance.lang = getSpeechLanguage(lastTarget);
+    utterance.rate = 0.92;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => {
       setSpeaking(false);
-      setError(speechError instanceof Error ? speechError.message : "朗读生成失败，请稍后再试。");
-    }
+      setError("朗读失败，请确认浏览器已安装对应语言语音。");
+    };
+
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
   }
 
   const isBusy = loadingTarget !== null;
